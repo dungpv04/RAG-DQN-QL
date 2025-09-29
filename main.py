@@ -128,11 +128,11 @@ if __name__ == "__main__":
     chatbot_q = RAGChatbot(q_agent, env)
     
     sample_queries = [
-        "Học phí được tính dựa trên số tín chỉ đúng không?",
-        "Thời gian học tối đa cho sinh viên ngành Công nghệ là bao lâu?",
-        "Khi nào thì em có thể bị buộc thôi học?",
-        "Em có thể đăng ký học lại các học phần đã trượt như thế nào?",
-        "Điểm C tương ứng với thang điểm 10 là bao nhiêu?"
+        "Quy chế đào tạo đại học quy định những gì?",
+        "Thời gian học tập tối đa cho ngành Kinh tế hệ chính quy là bao lâu?",
+        "Định nghĩa của học phần tiên quyết là gì?",
+        "Các điều kiện để sinh viên được xét tốt nghiệp là gì?",
+        "Hạng tốt nghiệp xuất sắc được tính dựa trên tiêu chí nào?"
     ]
     
     for query in sample_queries:
