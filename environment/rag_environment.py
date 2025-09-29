@@ -78,8 +78,20 @@ class RAGEnvironment:
         else: return 0
     
     def _get_scope_match(self, query, docs):
-        """Phù hợp phạm vi"""
-        return random.randint(0, 2)
+        """Đánh giá mức độ phù hợp phạm vi giữa query và docs."""
+        if not docs:
+            return 0  # không có tài liệu thì coi như không khớp
+
+        sims = [embedding_function(query, doc) for doc in docs]
+        avg_sim = np.mean(sims)
+
+        # Quy ra mức 0-1-2
+        if avg_sim > 0.8:
+            return 2  # khớp phạm vi tốt
+        elif avg_sim > 0.5:
+            return 1  # khớp trung bình
+        else:
+            return 0  # phạm vi kém khớp
     
     def get_reward(self, state, action):
         """Hàm phần thưởng dựa trên trạng thái và hành động"""
