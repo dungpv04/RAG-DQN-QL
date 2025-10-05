@@ -11,7 +11,7 @@ class RAGEnvironment:
         
         # Hành động và phần thưởng
         self.actions = {
-            0: "trích dẫn nguyên văn",
+            0: "trích dẫn nguyên văn",  
             1: "tóm tắt nội dung", 
             2: "diễn giải lại",
             3: "hỏi lại để làm rõ",
@@ -65,9 +65,21 @@ class RAGEnvironment:
         else: return 0
     
     def _get_context_match(self, query, docs):
-        """Ngữ cảnh hội thoại phù hợp"""
-        # Logic đơn giản để demo
-        return random.randint(0, 2)
+        """Đánh giá mức độ phù hợp ngữ cảnh giữa query và các tài liệu"""
+        if not docs:
+            return 0  # không có tài liệu thì coi như không khớp
+
+        # Tính độ tương đồng trung bình giữa query và tất cả tài liệu
+        sims = [embedding_function(query, doc) for doc in docs]
+        avg_sim = np.mean(sims)
+
+        # Quy tắc ánh xạ về 3 mức
+        if avg_sim > 0.75:
+            return 2  # Ngữ cảnh khớp tốt
+        elif avg_sim > 0.4:
+            return 1  # Ngữ cảnh khớp trung bình
+        else:
+            return 0  # Ngữ cảnh kém
     
     def _get_ambiguity_level(self, query):
         """Độ mơ hồ trong câu hỏi"""
@@ -126,10 +138,31 @@ class RAGEnvironment:
     
     def step(self, action):
         """Thực hiện hành động và trả về trạng thái mới, phần thưởng"""
+        # Tính phần thưởng tại state hiện tại
         reward = self.get_reward(self.current_state, action)
-        # Giả định chuyển đổi trạng thái ngẫu nhiên cho demo
-        self.current_state = random.randint(0, self.n_states - 1)
-        done = False  # Trong thực tế, có thể kết thúc episode
+
+        # Giải mã state hiện tại ra 5 đặc trưng
+        features = self.decode_state(self.current_state)
+        similarity, confidence, context, ambiguity, scope = features
+
+        # Quy tắc cập nhật đặc trưng theo action
+        if action == 0:  # Trích dẫn nguyên văn
+            similarity = min(similarity + 1, 2)  
+        elif action == 1:  # Tóm tắt nội dung
+            context = min(context + 1, 2)
+        elif action == 2:  # Diễn giải lại
+            ambiguity = max(ambiguity - 1, 0)
+        elif action == 3:  # Hỏi lại
+            ambiguity = min(ambiguity + 1, 2)
+        elif action == 4:  # Thoái lui an toàn
+            similarity, confidence, context, ambiguity, scope = 0, 0, 0, 0, 0
+
+        # Mã hóa lại thành state mới
+        new_state = self.encode_state([similarity, confidence, context, ambiguity, scope])
+        self.current_state = new_state
+
+        # Giả định chưa có điều kiện kết thúc (done)
+        done = False
         return self.current_state, reward, done
     
     def reset(self):
