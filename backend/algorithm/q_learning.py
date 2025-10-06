@@ -19,12 +19,6 @@ class QLearningAgent:
             return random.randint(0, self.n_actions - 1)
         else:
             return np.argmax(self.q_table[state])
-        
-    def update_epsilon(self):
-        """Giảm epsilon sau mỗi episode"""
-        if self.epsilon > self.epsilon_min:
-            self.epsilon *= self.epsilon_decay
-
     
     def learn(self, state, action, reward, next_state, gamma=0.95):
         """Cập nhật Q-table"""
