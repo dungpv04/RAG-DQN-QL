@@ -55,10 +55,12 @@ class RAGChatbot:
         print(f"Debug - Found {len(relevant_chunks)} relevant chunks")
         
         # Chọn hành động tốt nhất
-        if isinstance(self.agent, QLearningAgent):
-            action = np.argmax(self.agent.q_table[state])
-        else:  # DQN
+        if hasattr(self.agent, "act"):
             action = self.agent.act(state)
+        else:
+            action = np.argmax(self.agent.q_table[state])
+
+        
         
         action_name = self.env.actions[action]
         

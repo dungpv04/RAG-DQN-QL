@@ -4,6 +4,7 @@ from chat.rag_chatbot import RAGChatbot
 from environment.rag_environment import RAGEnvironment
 from algorithm.q_learning import QLearningAgent
 from algorithm.dqn import DQNAgent
+from algorithm.sarsa import SarsaAgent
 def train_q_learning(episodes=1000):
     """Huấn luyện Q-Learning"""
     env = RAGEnvironment()
@@ -71,21 +72,56 @@ def train_dqn(episodes=1000):
     
     return agent, rewards_history
 
+def train_sarsa(episodes=1000):
+    """Huấn luyện SARSA"""
+    env = RAGEnvironment()
+    agent = SarsaAgent(env.n_states, env.n_actions)
+    
+    rewards_history = []
+    
+    for episode in range(episodes):
+        state = env.reset()
+        action = agent.choose_action(state)
+        total_reward = 0
+        
+        for step in range(50):
+            next_state, reward, done = env.step(action)
+            next_action = agent.choose_action(next_state)
+            
+            agent.learn(state, action, reward, next_state, next_action, env.gamma)
+            
+            state = next_state
+            action = next_action
+            total_reward += reward
+            
+            if done:
+                break
+        
+        rewards_history.append(total_reward)
+        
+        if episode % 100 == 0:
+            avg_reward = np.mean(rewards_history[-100:])
+            print(f"SARSA Episode {episode}, Avg Reward: {avg_reward:.2f}")
+    
+    return agent, rewards_history
 # ========================= Demo và Đánh giá =========================
 def compare_algorithms():
-    """So sánh hiệu quả của Q-Learning và DQN"""
+    """So sánh hiệu quả của Q-Learning và DQN va Sarsa"""
     print("=== Bắt đầu huấn luyện Q-Learning ===")
     q_agent, q_rewards = train_q_learning(episodes=500)
     
     print("\n=== Bắt đầu huấn luyện DQN ===")
     dqn_agent, dqn_rewards = train_dqn(episodes=500)
     
+    print("\n=== Bắt đầu huấn luyện SARSA ===")
+    sarsa_agent, sarsa_rewards = train_sarsa(episodes=500)
     # Vẽ biểu đồ so sánh
     plt.figure(figsize=(12, 5))
     
     plt.subplot(1, 2, 1)
     plt.plot(q_rewards, label='Q-Learning', alpha=0.7)
     plt.plot(dqn_rewards, label='DQN', alpha=0.7)
+    plt.plot(sarsa_rewards, label='SARSA', alpha=0.7)
     plt.title('Reward theo Episode')
     plt.xlabel('Episode')
     plt.ylabel('Total Reward')
@@ -95,10 +131,13 @@ def compare_algorithms():
     window = 50
     q_ma = np.convolve(q_rewards, np.ones(window)/window, mode='valid')
     dqn_ma = np.convolve(dqn_rewards, np.ones(window)/window, mode='valid')
-    
+    sar_ma = np.convolve(sarsa_rewards, np.ones(window)/window, mode='valid')
+
     plt.subplot(1, 2, 2)
     plt.plot(q_ma, label='Q-Learning (MA)', linewidth=2)
     plt.plot(dqn_ma, label='DQN (MA)', linewidth=2)
+    plt.plot(sar_ma, label='SARSA (MA)', linewidth=2)
+
     plt.title(f'Moving Average Reward (window={window})')
     plt.xlabel('Episode')
     plt.ylabel('Average Reward')
@@ -107,7 +146,7 @@ def compare_algorithms():
     plt.tight_layout()
     plt.show()
     
-    return q_agent, dqn_agent
+    return q_agent, dqn_agent , sarsa_agent
 
 # ========================= Giả định các hàm phụ trợ =========================
 
@@ -119,7 +158,7 @@ if __name__ == "__main__":
     print("=== RAG Chatbot với Reinforcement Learning ===\n")
     
     # So sánh thuật toán
-    q_agent, dqn_agent = compare_algorithms()
+    q_agent, dqn_agent, sarsa_agent = compare_algorithms()
     
     # Demo chatbot
     env = RAGEnvironment()
@@ -146,6 +185,15 @@ if __name__ == "__main__":
     
     for query in sample_queries:
         response, action = chatbot_dqn.respond(query)
+        print(f"Câu hỏi: {query}")
+        print(f"Hành động: {action}")
+        print(f"Trả lời: {response}\n")
+
+
+    print("=== Demo Chatbot với SARSA ===")
+    chatbot_sar = RAGChatbot(sarsa_agent, env)
+    for query in sample_queries:
+        response, action = chatbot_sar.respond(query)
         print(f"Câu hỏi: {query}")
         print(f"Hành động: {action}")
         print(f"Trả lời: {response}\n")
