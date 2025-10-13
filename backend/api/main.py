@@ -13,7 +13,6 @@ from chat.rag_chatbot import RAGChatbot
 from environment.rag_environment import RAGEnvironment
 from algorithm.q_learning import QLearningAgent
 from algorithm.dqn import DQNAgent
-from algorithm.ddqn import DDQNAgent
 
 app = FastAPI(
     title="RAG Chatbot API",
@@ -33,7 +32,7 @@ app.add_middleware(
 # Pydantic models for request/response
 class ChatMessage(BaseModel):
     message: str
-    algorithm: Optional[str] = "q_learning"  # "q_learning", "dqn", or "ddqn"
+    algorithm: Optional[str] = "q_learning"  # "q_learning" or "dqn"
 
 class ChatResponse(BaseModel):
     response: str
@@ -47,15 +46,13 @@ class HealthResponse(BaseModel):
 # Global variables to store trained agents
 q_agent = None
 dqn_agent = None
-ddqn_agent = None
 environment = None
 chatbot_q = None
 chatbot_dqn = None
-chatbot_ddqn = None
 
 def initialize_agents():
     """Initialize and train the agents"""
-    global q_agent, dqn_agent, ddqn_agent, environment, chatbot_q, chatbot_dqn, chatbot_ddqn
+    global q_agent, dqn_agent, environment, chatbot_q, chatbot_dqn
     
     print("Initializing environment...")
     environment = RAGEnvironment()
@@ -90,26 +87,9 @@ def initialize_agents():
         if episode % 10 == 0:
             dqn_agent.replay()
     
-    print("Training DDQN agent...")
-    ddqn_agent = DDQNAgent(5, environment.n_actions)
-    
-    # Quick training for demo purposes
-    for episode in range(100):
-        state = environment.reset()
-        for step in range(20):
-            action = ddqn_agent.act(state)
-            next_state, reward, done = environment.step(action)
-            ddqn_agent.remember(state, action, reward, next_state, done)
-            state = next_state
-            if done:
-                break
-        if episode % 10 == 0:
-            ddqn_agent.replay()
-    
     print("Creating chatbots...")
     chatbot_q = RAGChatbot(q_agent, environment)
     chatbot_dqn = RAGChatbot(dqn_agent, environment)
-    chatbot_ddqn = RAGChatbot(ddqn_agent, environment)
     
     print("Agents initialized successfully!")
 
@@ -129,7 +109,7 @@ async def health_check():
 @app.post("/chat", response_model=ChatResponse)
 async def chat(message: ChatMessage):
     """Main chat endpoint"""
-    global chatbot_q, chatbot_dqn, chatbot_ddqn
+    global chatbot_q, chatbot_dqn
     
     if not message.message.strip():
         raise HTTPException(status_code=400, detail="Message cannot be empty")
@@ -140,11 +120,6 @@ async def chat(message: ChatMessage):
                 raise HTTPException(status_code=503, detail="DQN agent not initialized")
             response, action = chatbot_dqn.respond(message.message)
             algorithm_used = "DQN"
-        elif message.algorithm.lower() == "ddqn":
-            if chatbot_ddqn is None:
-                raise HTTPException(status_code=503, detail="DDQN agent not initialized")
-            response, action = chatbot_ddqn.respond(message.message)
-            algorithm_used = "DDQN"
         else:
             if chatbot_q is None:
                 raise HTTPException(status_code=503, detail="Q-Learning agent not initialized")
@@ -174,11 +149,6 @@ async def get_available_algorithms():
                 "name": "dqn",
                 "description": "Deep Q-Network Algorithm", 
                 "available": chatbot_dqn is not None
-            },
-            {
-                "name": "ddqn",
-                "description": "Double Deep Q-Network Algorithm",
-                "available": chatbot_ddqn is not None
             }
         ]
     }
