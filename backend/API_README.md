@@ -5,7 +5,7 @@ This is a FastAPI backend for the RAG Chatbot with Reinforcement Learning system
 ## Features
 
 - **Chat Endpoint**: Send messages and receive responses from the RAG chatbot
-- **Algorithm Selection**: Choose between Q-Learning and DQN algorithms
+- **Algorithm Selection**: Choose between Q-Learning, DQN, and DDQN algorithms
 - **Health Check**: Monitor API status
 - **CORS Support**: Ready for frontend integration
 
@@ -66,7 +66,7 @@ POST /chat
 ```json
 {
   "message": "Quy chế đào tạo đại học quy định những gì?",
-  "algorithm": "q_learning"  // Optional: "q_learning" or "dqn"
+  "algorithm": "q_learning"  // Optional: "q_learning", "dqn", or "ddqn"
 }
 ```
 
@@ -96,6 +96,11 @@ GET /algorithms
     {
       "name": "dqn", 
       "description": "Deep Q-Network Algorithm",
+      "available": true
+    },
+    {
+      "name": "ddqn",
+      "description": "Double Deep Q-Network Algorithm",
       "available": true
     }
   ]
