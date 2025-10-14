@@ -55,10 +55,13 @@ class RAGChatbot:
         print(f"Debug - Found {len(relevant_chunks)} relevant chunks")
         
         # Chọn hành động tốt nhất
-        if hasattr(self.agent, "act"):
+        # Always delegate to agent if possible
+        if hasattr(self.agent, "choose_action"):
+            action = self.agent.choose_action(state)
+        elif hasattr(self.agent, "act"):
             action = self.agent.act(state)
         else:
-            action = np.argmax(self.agent.q_table[state])
+            action = int(np.argmax(self.agent.q_table[state]))
 
         
         
