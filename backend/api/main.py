@@ -83,7 +83,7 @@ def initialize_agents():
     # Quick training for demo purposes
     for episode in range(100):
     # [Bước 4] Khởi tạo trạng thái ban đầu s₁ của môi trường
-    state = environment.reset()
+        state = environment.reset()
     for step in range(20):
         # [Bước 5] Chọn hành động a_t theo chính sách ε-greedy dựa trên Q(φ_t, a; θ)
         action = dqn_agent.act(state)
