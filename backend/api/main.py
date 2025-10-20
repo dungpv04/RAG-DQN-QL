@@ -75,20 +75,38 @@ def initialize_agents():
                 break
     
     print("Training DQN agent...")
-    dqn_agent = DQNAgent(5, environment.n_actions)
+    # [Bước 1] Khởi tạo bộ nhớ lặp lại D — dùng để lưu trữ các trải nghiệm (experience replay)
+    # [Bước 2] Khởi tạo hàm giá trị hành động Q với trọng số ngẫu nhiên θ — đây là mạng chính (main network)
+    # [Bước 3] Khởi tạo mạng mục tiêu Q̂ (target network) với trọng số θ⁻ = θ — sao chép ban đầu từ mạng chính
+    dqn_agent = DQNAgent(5, environment.n_actions, gamma=environment.gamma)
     
     # Quick training for demo purposes
     for episode in range(100):
-        state = environment.reset()
-        for step in range(20):
-            action = dqn_agent.act(state)
-            next_state, reward, done = environment.step(action)
-            dqn_agent.remember(state, action, reward, next_state, done)
-            state = next_state
-            if done:
-                break
-        if episode % 10 == 0:
-            dqn_agent.replay()
+    # [Bước 4] Khởi tạo trạng thái ban đầu s₁ của môi trường
+    state = environment.reset()
+    for step in range(20):
+        # [Bước 5] Chọn hành động a_t theo chính sách ε-greedy dựa trên Q(φ_t, a; θ)
+        action = dqn_agent.act(state)
+
+        # [Bước 6] Thực hiện hành động a_t và quan sát phần thưởng r_t, trạng thái kế tiếp s_{t+1}
+        next_state, reward, done = environment.step(action)
+
+        # [Bước 7] Lưu chuyển tiếp (φ_t, a_t, r_t, φ_{t+1}) vào bộ nhớ D
+        dqn_agent.remember(state, action, reward, next_state, done)
+
+        # [Bước 8–11] Huấn luyện lại mạng bằng cơ chế Replay:
+        #   - [Bước 8] Lấy mẫu minibatch ngẫu nhiên từ bộ nhớ D
+        #   - [Bước 9] Tính giá trị mục tiêu y_j = r_j + γ * max_a' Q̂(φ_{j+1}, a'; θ⁻)
+        #   - [Bước 10] Thực hiện lan truyền ngược (gradient descent)
+        #                trên lỗi (y_j − Q(φ_j, a_j; θ))² để cập nhật θ
+        #   - [Bước 11] Định kỳ cập nhật trọng số mạng mục tiêu θ⁻ ← θ
+        dqn_agent.replay()
+
+        # Cập nhật trạng thái
+        state = next_state
+        # Dừng sớm nếu tập đã kết thúc
+        if done:
+            break
     
     print("Training DDQN agent...")
     ddqn_agent = DDQNAgent(5, environment.n_actions)

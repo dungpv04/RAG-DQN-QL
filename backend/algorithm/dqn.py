@@ -23,6 +23,7 @@ class DQN(nn.Module):
             output_size: Kích thước output (số actions có thể thực hiện)
         """
         super(DQN, self).__init__()
+        # [Step 2] initialize action-value function Q with random weights θ — khởi tạo mạng Q
         # Tạo mạng neural network với 3 layers fully connected
         self.network = nn.Sequential(
             # Layer 1: Input -> Hidden với ReLU activation
@@ -56,7 +57,7 @@ class DQNAgent:
     2. Target Network: Ổn định quá trình training 
     3. Epsilon-Greedy: Cân bằng exploration vs exploitation
     """
-    def __init__(self, state_size, action_size, lr=0.001):
+    def __init__(self, state_size, action_size, lr=0.001, gamma=0.95, target_update_every=1000, memory_size=50000, hidden_size=64):
         """
         Khởi tạo DQN Agent với các tham số cần thiết
         
@@ -65,27 +66,33 @@ class DQNAgent:
             action_size: Số lượng actions có thể thực hiện
             lr: Learning rate cho optimizer
         """
+        # [Step 1] initialize replay memory D — tạo bộ nhớ kinh nghiệm để replay
         self.state_size = state_size
         self.action_size = action_size
+        self.gamma = gamma
+        self.target_update_every = target_update_every
+        self.total_steps = 0  # đếm số bước để cập nhật target theo C bước
         
         # Experience Replay Buffer: Lưu trữ (state, action, reward, next_state, done)
         # Giúp break correlation giữa các experiences liên tiếp
-        self.memory = deque(maxlen=2000)
+        self.memory = deque(maxlen=memory_size)
         
         # Epsilon-Greedy Parameters cho exploration
         self.epsilon = 1.0          # Bắt đầu với exploration hoàn toàn (100%)
         self.epsilon_min = 0.01     # Minimum exploration rate (1%)
         self.epsilon_decay = 0.995  # Tốc độ giảm epsilon sau mỗi episode
         
+        # [Step 2] initialize action-value function Q with random weights θ — mạng chính
         # Tạo 2 neural networks giống hệt nhau
         # Main Q-Network: Được update liên tục trong quá trình training
-        self.q_network = DQN(state_size, 64, action_size)
+        self.q_network = DQN(state_size, hidden_size, action_size)
         # Target Network: Được update định kỳ để stabilize training
-        self.target_network = DQN(state_size, 64, action_size)
+        self.target_network = DQN(state_size, hidden_size, action_size)
         
         # Adam optimizer cho việc update weights
         self.optimizer = optim.Adam(self.q_network.parameters(), lr=lr)
         
+        # [Step 3] set θ⁻ ← θ — đồng bộ trọng số ban đầu từ Q sang Q̂
         # Khởi tạo target network với weights giống main network
         self.update_target_network()
     
@@ -138,6 +145,7 @@ class DQNAgent:
             next_state: State tiếp theo
             done: Có phải là terminal state không
         """
+        # [Step 7] store transition (φ_t, a_t, r_t, φ_{t+1}) in D — lưu mẫu vào bộ nhớ
         # Thêm experience tuple vào memory buffer
         # Deque tự động loại bỏ experiences cũ khi đạt maxlen
         self.memory.append((state, action, reward, next_state, done))
@@ -160,6 +168,7 @@ class DQNAgent:
         Returns:
             int: Action được chọn (0 đến action_size-1)
         """
+        # [Step 5] following ε-greedy policy, select a_t — chọn hành động theo ε-greedy
         # EXPLORATION: Chọn action ngẫu nhiên với xác suất epsilon
         if np.random.random() <= self.epsilon:
             return random.randrange(self.action_size)
@@ -185,6 +194,7 @@ class DQNAgent:
         Args:
             batch_size: Số lượng experiences để sample cho training
         """
+        # [Step 8] sample random minibatch (φ_j, a_j, r_j, φ_{j+1}) from D — lấy batch ngẫu nhiên
         # Kiểm tra có đủ experiences để training không
         if len(self.memory) < batch_size:
             return
@@ -201,6 +211,7 @@ class DQNAgent:
         next_states = torch.cat([self.state_to_tensor(e[3]) for e in batch]) # Next states
         dones = torch.BoolTensor([e[4] for e in batch])                      # Terminal flags
         
+        # [Step 10] perform a gradient descent step on (y_j − Q(φ_j, a_j; θ))^2 — tối ưu loss
         # STEP 3: Tính current Q-values từ main network
         # Lấy Q-value của action đã thực hiện trong từng state
         current_q_values = self.q_network(states).gather(1, actions.unsqueeze(1))
@@ -213,8 +224,8 @@ class DQNAgent:
         # STEP 5: Áp dụng Bellman Equation
         # Q_target = reward + gamma * max(Q(next_state)) if not done
         # Q_target = reward if done (terminal state)
-        # Gamma = 0.95 là discount factor
-        target_q_values = rewards + (0.95 * next_q_values * ~dones)
+        # [Step 9] set y_j = r_j if terminal else r_j + γ max_a' Q̂(φ_{j+1}, a') — tính mục tiêu
+        target_q_values = rewards + (self.gamma * next_q_values * ~dones)
         
         # STEP 6: Tính loss và backpropagation
         # Sử dụng Mean Squared Error giữa predicted và target Q-values
@@ -224,6 +235,11 @@ class DQNAgent:
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
+        
+        # [Step 11] every C steps: reset Q̂ = Q (θ⁻ = θ) — đồng bộ định kỳ
+        self.total_steps += 1
+        if self.total_steps % self.target_update_every == 0:
+            self.update_target_network()
         
         # STEP 7: Decay epsilon để giảm exploration theo thời gian
         # Bắt đầu với exploration cao, dần dần chuyển sang exploitation
@@ -247,5 +263,6 @@ class DQNAgent:
         
         Thường được gọi sau mỗi N episodes hoặc N steps
         """
+        # [Step 11] set θ⁻ ← θ — thực hiện đồng bộ trọng số
         # Copy tất cả weights và biases từ main network sang target network
         self.target_network.load_state_dict(self.q_network.state_dict())

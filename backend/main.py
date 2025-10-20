@@ -30,7 +30,7 @@ def train_q_learning(episodes=1000):
         
         rewards_history.append(total_reward)
         
-        if episode % 100 == 0:
+        if episode % 1000 == 0:
             avg_reward = np.mean(rewards_history[-100:])
             print(f"Q-Learning Episode {episode}, Avg Reward: {avg_reward:.2f}")
     
@@ -39,7 +39,8 @@ def train_q_learning(episodes=1000):
 def train_dqn(episodes=1000):
     """Huấn luyện DQN"""
     env = RAGEnvironment()
-    agent = DQNAgent(5, env.n_actions)  # 5 features as input
+    # Truyền gamma từ môi trường và để agent tự cập nhật target theo số bước
+    agent = DQNAgent(5, env.n_actions, gamma=env.gamma)  # 5 features as input
     
     rewards_history = []
     
@@ -48,10 +49,14 @@ def train_dqn(episodes=1000):
         total_reward = 0
         
         for step in range(50):
+            # [Step 5] following ε-greedy policy, select a_t — chọn hành động ε-greedy
             action = agent.act(state)
+            # [Step 6] execute a_t in emulator and observe r_t, s_{t+1} — tương tác môi trường
             next_state, reward, done = env.step(action)
-            
+            # [Step 7] store transition (φ_t, a_t, r_t, φ_{t+1}) in D — lưu vào replay
             agent.remember(state, action, reward, next_state, done)
+            # [Steps 8–10] sample minibatch and gradient step — huấn luyện trong replay()
+            agent.replay()
             
             state = next_state
             total_reward += reward
@@ -59,14 +64,9 @@ def train_dqn(episodes=1000):
             if done:
                 break
         
-        agent.replay()
-        
-        if episode % 100 == 0:
-            agent.update_target_network()
-        
         rewards_history.append(total_reward)
         
-        if episode % 100 == 0:
+        if episode % 1000 == 0:
             avg_reward = np.mean(rewards_history[-100:])
             print(f"DQN Episode {episode}, Avg Reward: {avg_reward:.2f}")
     
@@ -102,7 +102,7 @@ def train_ddqn(episodes=1000):
         
         rewards_history.append(total_reward)
         
-        if episode % 100 == 0:
+        if episode % 1000 == 0:
             avg_reward = np.mean(rewards_history[-100:])
             print(f"DDQN Episode {episode}, Avg Reward: {avg_reward:.2f}")
     
@@ -112,13 +112,13 @@ def train_ddqn(episodes=1000):
 def compare_algorithms():
     """So sánh hiệu quả của Q-Learning, DQN và DDQN"""
     print("=== Bắt đầu huấn luyện Q-Learning ===")
-    q_agent, q_rewards = train_q_learning(episodes=500)
+    q_agent, q_rewards = train_q_learning(episodes=10000)
     
     print("\n=== Bắt đầu huấn luyện DQN ===")
-    dqn_agent, dqn_rewards = train_dqn(episodes=500)
+    dqn_agent, dqn_rewards = train_dqn(episodes=10000)
     
     print("\n=== Bắt đầu huấn luyện DDQN ===")
-    ddqn_agent, ddqn_rewards = train_ddqn(episodes=500)
+    ddqn_agent, ddqn_rewards = train_ddqn(episodes=10000)
     
     # Vẽ biểu đồ so sánh chi tiết
     plt.figure(figsize=(16, 12))
